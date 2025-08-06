@@ -1,0 +1,12 @@
+# Backend credentials
+backend/creds.json
+
+# Node.js modules
+node_modules/
+
+# Environment variables
+.env
+
+# Editor files
+.vscode/
+*.log
