@@ -1,3 +1,52 @@
+
+let accessToken = null;
+let isAuthenticated = false;
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+const DISCOVERY_DOCS = ['https://sheets.googleapis.com/$discovery/rest?version=v4'];
+
+window.handleCredentialResponse = async (resp) => {
+  accessToken = resp.credential;
+  await gapiInit();
+  document.getElementById('currentUser').textContent = 'Google User';
+  isAuthenticated = true;
+  await fetchSheetData();
+  showSyncStatus('✅ Login Google sukses', 'success');
+};
+
+async function gapiInit() {
+  await new Promise(resolve => gapi.load('client', resolve));
+  await gapi.client.init({ discoveryDocs: DISCOVERY_DOCS });
+}
+
+async function fetchSheetData() {
+  const result = await gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId: '1XqOc2FAH5VvlyzhdTL2vs7T1jgS45U5W4zDCn03rZ1g',
+    range: 'INBOUND!A2:Z'
+  });
+  const values = result.result.values || [];
+  sampleData = parseSheetData(values); // gunakan fungsi existing Anda
+  filteredData = [...sampleData];
+  applyFilters();
+}
+
+async function updateStatusAndNotes(rowIndex, item) {
+  const statusRange = `INBOUND!L${rowIndex + 2}:O${rowIndex + 2}`;
+  const values = [[ item.status, item.catatan, new Date().toLocaleString('id‑ID'), currentUser ]];
+
+  const resp = await gapi.client.sheets.spreadsheets.values.update({
+    spreadsheetId: GOOGLE_SHEETS_CONFIG.SHEET_ID,
+    range: statusRange,
+    valueInputOption: 'RAW',
+    resource: { values }
+  });
+  return resp.status === 200;
+}
+
+
+
+
+
+
 // Enhanced Configuration
         const GOOGLE_SHEETS_CONFIG = {
             SHEET_ID: '1XqOc2FAH5VvlyzhdTL2vs7T1jgS45U5W4zDCn03rZ1g',
@@ -8,7 +57,7 @@
 
         // Enhanced State Management
         let currentUser = null;
-        let isAuthenticated = false;
+        
         let sampleData = [];
         let filteredData = [];
         let displayedData = [];
@@ -23,7 +72,7 @@
 
         // Enhanced User Management
         const validUsers = {
-            'admin': { password: 'password123', role: 'admin', name: 'Administrator' },
+            'admin': { password: '1', role: 'admin', name: 'Administrator' },
             'user1': { password: 'user123', role: 'user', name: 'User 1' },
             'manager': { password: 'manager123', role: 'manager', name: 'Manager' },
             'supervisor': { password: 'super123', role: 'supervisor', name: 'Supervisor' }
@@ -71,6 +120,25 @@
                     throw error;
                 }
             }
+
+async writeData(rowIndex, rowDataArray) {
+    try {
+        const targetRange = `INBOUND!A${rowIndex + 2}:Z${rowIndex + 2}`;
+        const url = `${this.baseUrl}/${this.config.SHEET_ID}/values/${targetRange}?valueInputOption=RAW&key=${this.config.API_KEY}`;
+
+        const response = await this.fetchWithRetry(url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ values: [rowDataArray] })
+        });
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error writing data to Google Sheets:', error);
+        throw error;
+    }
+}
+
 
             parseSheetData(values) {
                 if (values.length <= 1) return [];
